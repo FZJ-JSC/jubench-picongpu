@@ -1,0 +1,3 @@
+[submodule "src/picongpu"]
+	path = src/picongpu
+	url = https://github.com/ComputationalRadiationPhysics/picongpu.git

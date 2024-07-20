@@ -1,0 +1,5 @@
+system,nnodes,nconfig,gridconfig,simtime,fullsimtime
+juwelsbooster,16,-d 4 4 4,-g 1024 1024 1024,466.152,512.027
+juwelsbooster,32,-d 8 4 4,-g 1024 1024 1024,242.916,295.512
+juwelsbooster,64,-d 8 8 4,-g 1024 1024 1024,130.772,176.304
+juwelsbooster,128,-d 8 8 8,-g 1024 1024 1024,72.879,121.989

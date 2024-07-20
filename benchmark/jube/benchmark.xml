@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE jube SYSTEM "<jube.dtd path>">
+<jube>
+   <benchmark name="PIConGPU_Benchmark" outpath="./run">
+
+	<parameterset name="system">
+		<parameter name="systemname" mode="shell">printf "%s" $SYSTEMNAME</parameter>
+	</parameterset>
+
+	<parameterset name="testset">
+		<!-- A list of all the test cases -->
+		<parameter name="tckhi">KHI_growthRate</parameter>
+		<!-- Combine all tests to single parameter to loop over all the test cases -->
+		<parameter name="test" mode="python">
+			",".join([i for i in "${tckhi}".split(" ") if len(i) > 0])
+		</parameter>
+		<parameter name="testpath">picongpu/share/picongpu/tests</parameter>
+		<parameter name="sourcebase">$jube_benchmark_home/../../src/</parameter>
+		<parameter name="version" mode="shell">printf "%s" `cd src/picongpu; git rev-parse --short=11 HEAD`</parameter>
+	</parameterset>
+
+	<parameterset name="paths">
+		<parameter name="testcase">khi_test</parameter>	
+		<parameter name="picongpuexec">$jube_wp_abspath/$testcase/bin/picongpu</parameter>
+	</parameterset>
+
+	<parameterset name="systemParameter" init_with="platform.xml">
+		<parameter name="accountname">jscbenchmark</parameter>
+		<parameter tag="large|high_large|high_medium|high_small" name="reservation">#SBATCH --reservation=large_scale_benchmark</parameter>
+		<parameter tag="!large+!high_large+!high_medium+!high_small" name="partition">booster</parameter>
+		<parameter tag="large|high_large|high_medium|high_small" name="partition">largebooster</parameter>
+		<parameter name="nnodes" type="int" mode="python">{
+                        "juwelsbooster":"8",
+                        "jurecadc":"4"}["${systemname}"]
+		</parameter>
+		<parameter tag="high_large|high_medium|high_small" name="nnodes" type="int" mode="python">640</parameter>
+		<parameter tag="strong_scaling|weak_scaling" name="nnodes" type="int" mode="python">{
+			"juwelsbooster":"4,8,16,32,64,128",
+			"jurecadc":"4"}["${systemname}"]
+		</parameter>
+		<parameter tag="large" name="nnodes" type="int" mode="python">{
+                        "juwelsbooster":"256,384,512,640",
+                        "jurecadc":"4"}["${systemname}"]
+                </parameter>
+		<parameter name="ntaskspernode">4</parameter>
+		<parameter name="ngpus">gpu:4</parameter>
+		<parameter name="node_conf" mode="python">"-d 4 4 2"</parameter>
+		<parameter tag="high_large|high_medium|high_small" name="node_conf" mode="python">"-d 16 16 10"</parameter>
+		<parameter tag="strong_scaling|weak_scaling" name="node_conf" mode="python">{
+			"4": "-d 4 4 1",
+			"8": "-d 4 4 2",
+			"16": "-d 4 4 4",
+			"32": "-d 8 4 4",
+			"64": "-d 8 8 4",
+		        "128": "-d 8 8 8"}["$nnodes"]
+		</parameter>
+		<parameter tag="large" name="node_conf" mode="python">{
+                        "256": "-d 16 8 8",
+                        "384": "-d 16 16 6",
+                        "512": "-d 16 16 8",
+                        "640": "-d 16 16 10"}["$nnodes"]
+		</parameter>
+		<parameter name="grid_conf" mode="python">"-g 1024 1024 512"</parameter>
+		<parameter tag="!large+strong_scaling" name="grid_conf">-g 1024 1024 1024</parameter>
+		<parameter tag="large+strong_scaling" name="grid_conf">-g 4096 2048 2048</parameter>
+		<parameter tag="high_large" name="grid_conf" mode="python">"-g 4096 4096 2560"</parameter>
+		<parameter tag="high_medium" name="grid_conf" mode="python">"-g 4096 2048 2048"</parameter>
+		<parameter tag="high_small" name="grid_conf" mode="python">"-g 4096 2048 1024"</parameter>
+		<parameter tag="!strong+weak_scaling" name="grid_conf" mode="python">{
+			"4": "-g 1024 512 512",
+                        "8": "-g 1024 1024 512",
+                        "16": "-g 1024 1024 1024",
+                        "32": "-g 2048 1024 1024",
+                        "64": "-g 2048 2048 1024",
+			"128": "-g 2048 2048 2048"}["$nnodes"]
+		</parameter>
+		<parameter tag="large+weak_scaling" name="grid_conf" mode="python">{
+                        "256": "-g 4096 2048 2048",
+                        "384": "-g 4096 3072 2048",
+                        "512": "-g 4096 4096 2048",
+                        "640": "-g 4096 4096 2560"}["$nnodes"]
+                </parameter>
+		<parameter name="boundary">--periodic 1 1 1</parameter>
+		<parameter name="tsteps">-s 1500</parameter>
+		<parameter name="output">--fields_energy.period 20</parameter>
+		<parameter name="argsexec">$grid_conf $node_conf $boundary $tsteps $output</parameter>
+		<parameter name="time">00:20:00</parameter>
+	   	<parameter name="account">$accountname</parameter>
+   	   	<parameter name="additional_job_config">$reservation</parameter>	   
+           	<parameter name="nodes">$nnodes</parameter>
+           	<parameter name="taskspernode">$ntaskspernode</parameter>
+           	<!--parameter name="threadspertask">$nthreads</parameter-->
+           	<parameter name="queue">$partition</parameter>
+	   	<parameter name="timelimit">$time</parameter>
+	   	<parameter name="gres">$ngpus</parameter>
+           	<parameter name="env"></parameter>
+	   	<parameter name="executable">$picongpuexec</parameter>
+	   	<parameter name="args_exec">$argsexec</parameter>
+           	<parameter name="postprocess"></parameter>
+        </parameterset>
+	
+
+      	<parameterset name="stageset">
+         	<parameter name="load_modules" mode="python">
+            	"module purge; module load GCC; module load CUDA; module load CMake; module load ParaStationMPI; module load Python; module load Boost"
+    		</parameter>
+	</parameterset>
+  
+	<fileset name="sources">
+		<copy directory="../../src/">picongpu</copy>  
+	</fileset>
+
+
+	<step name="compile">
+		<use>system</use>
+		<use>testset</use>
+		<use>paths</use>		
+		<use>systemParameter</use>
+		<use>stageset</use>
+		<do>${load_modules}</do>
+		<use>sources</use>
+		<do done_file="${testcase}">picongpu/bin/pic-create ${testpath}/${test} ${testcase}</do> 			
+		<do>cd ${testcase}; ../picongpu/bin/pic-build</do>
+	</step>
+
+	
+	<step name="run" depend="compile">
+		<use>system</use>
+                <use>testset</use>
+                <use>paths</use>
+                <use>systemParameter</use>
+		<use>stageset</use>
+		<do>${load_modules}</do>
+		<use from="platform.xml">executeset</use>
+		<use from="platform.xml">jobfiles</use>
+		<use from="platform.xml">executesub</use>
+		<do> echo $version </do>
+		<do>cp -r compile/${testcase} . </do>
+		<do>$submit $submit_script</do>
+	</step>
+
+	<patternset name="timing_pattern">
+		<pattern name="sim_time_sec" type="float" default="0">calculation\s+simulation\s+time:[^=]+=${jube_pat_bl}${jube_pat_fp}${jube_pat_bl}sec\n</pattern>
+
+		<pattern name="full_sim_time" type="float" default="0">full\s+simulation\s+time:[^=]+=${jube_pat_bl}${jube_pat_fp}${jube_pat_bl}sec\n</pattern>
+	</patternset>
+
+	<analyser name="analysis">
+		<use>timing_pattern</use>
+		<analyse step="run">
+			<file>job.out</file>
+		</analyse>
+	</analyser>
+
+	<result>
+		<use>analysis</use>
+		<table name="timing_results" style="csv">
+			<column title="version">version</column>
+			<column title="system">systemname</column>
+			<column title="nnodes">nnodes</column>
+			<column title="nconfig">node_conf</column>
+			<column title="gridconfig">grid_conf</column>
+			<column title="calcsimtime">sim_time_sec</column>
+		</table>
+	</result>
+
+   </benchmark>
+</jube>
+
+
+
